@@ -1,0 +1,53 @@
+# Configure WAF Rules
+resource "azurerm_application_gateway" "example" {
+  name                = "sal-application-gateway"
+  location            = azurerm_resource_group.web-site.location
+  resource_group_name = azurerm_resource_group.web-site.name
+  sku {
+    name     = "WAF_v2"
+    tier     = "WAF_v2"
+    capacity = 2
+  }
+
+  gateway_ip_configuration {
+    name      = "my-gateway-ip-config"
+    subnet_id = azurerm_subnet.example.id
+  }
+
+  frontend_port {
+    name = "my-frontend-port"
+    port = 80
+  }
+
+  backend_address_pool {
+    name = "my-backend-pool"
+    ip_addresses = [
+      azurerm_app_service.web-ap.default_site_hostname
+    ]
+  }
+
+  http_listener {
+    name                           = "my-http-listener"
+    frontend_ip_configuration_name = "my-frontend-ip-config"
+    frontend_port_name             = "my-frontend-port"
+    protocol                       = "Http"
+  }
+
+  request_routing_rule {
+    name                       = "my-request-routing-rule"
+    rule_type                  = "Basic"
+    http_listener_name         = azurerm_application_gateway.example.http_listener[0].name
+    backend_address_pool_name  = azurerm_application_gateway.example.backend_address_pool[0].name
+    backend_http_settings_name = azurerm_application_gateway.example.backend_http_settings[0].name
+  }
+
+  web_application_firewall_configuration {
+    enabled            = true
+    mode               = "Prevention"
+    rule_set_type      = "OWASP"
+    rule_set_version   = "3.0"
+    disabled_rule_groups = [
+      "Request_Body_Validation"
+    ]
+  }
+}
